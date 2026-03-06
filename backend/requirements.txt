@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+requests
+newsapi-python
+spacy
+sqlmodel
+anthropic
+python-dotenv
