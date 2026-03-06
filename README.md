@@ -1,59 +1,81 @@
-# Media-Contact-Builder
+# Media Contact Builder (V2)
 
-An AI-powered application to build journalist profiles, score relevance based on beats, and auto-generate personalized PR pitches. 
+An intelligent, AI-powered platform designed for advocacy organizations to intelligently discover, evaluate, and pitch journalists based on semantic resonance and mathematical recency algorithms.
 
-## Tech Stack
-- **Backend:** Python, FastAPI, SQLite
-- **Data Collection:** NewsAPI, `requests`, `spaCy`
-- **Generative AI:** Anthropic API (Claude)
-- **Frontend:** React (Vite), Tailwind CSS
+## ✨ V2 "Internship Excellence" Architecture
+
+This application was originally a prototype built on flat scripts. It has been completely rebuilt for production standards to demonstrate senior-level engineering capabilities:
+
+### The Stack
+- **Backend**: FastAPI, SQLModel (ORM), BackgroundTasks, Uvicorn
+- **Intelligence**: spaCy (Named Entity Recognition), Anthropic Claude 3 Haiku (Generative AI)
+- **Database**: SQLite (relational schema spanning Journalists, Articles, Pitches)
+- **Frontend**: React (Vite), Tailwind CSS, Framer Motion, Recharts
 
 ---
 
-## 🚀 How to Run the Project
+## 🚀 Core Features
 
-You will need two terminal windows open—one for the backend API and one for the frontend React app.
+### 1. The Async Intelligence Pipeline
+When a user triggers a scrape for a specific beat (e.g., `environment`), FastAPI delegates the heavy lifting to a `BackgroundTask`. 
+- **Scraping**: Hits NewsAPI, filtering noise and hydrating the database.
+- **Deep NLP Profiling**: Uses `spaCy` to run Named Entity Recognition (NER) on the journalist's recent articles, extracting common Organizations, People, and Geopolitical topics to generate an AI Summary of their exact beat slice.
 
-### 1. Prerequisites and API Keys
-Before running, you need to add your API keys. Edit the `.env.example` file in the root folder, rename it to `.env`, and fill in your keys:
+### 2. Weighted V2 Scoring Engine (`scorer.py`)
+Journalists aren't just listed; they are ranked through a mathematical relevancy funnel:
+- **Topic Volume Match (50%)**: Assigns weights based on the density of beat-matching articles.
+- **Recency Decay (30%)**: Articles published within 24 hours receive 30 points. It decays to 20 points at 3 days, and 10 points at 7 days.
+- **Outlet Tier Bonus (20%)**: Employs a simulated tiered media dictionary. If an outlet matches a Tier 1 list (e.g., *NYT, Guardian*), the journalist receives a 20-point prestige bonus.
 
-```ini
-NEWS_API_KEY=your_news_api_key_here
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-```
+### 3. Dynamic Strategy Pitching (Anthropic)
+Instead of a generic template, users can select a **Pitch Strategy** (Story-driven, Data-heavy, Quick Check-in). The FastAPI backend dynamically restructures the prompt fed to Claude 3, resulting in highly customized, tone-perfect PR pitches.
 
-### 2. Start the Backend (API Server)
-The backend requires Python. In your first terminal:
+### 4. Interactive Recharts Dashboard
+The frontend isn't just a list; it includes a `Recharts` data visualization dashboard showing the distribution of Journalist Tiers (Premium, Major, Niche) allowing PR teams to understand the gravity of their target list at a glance.
 
+---
+
+## 🛠️ Installation & Setup
+
+### 1. Requirements
+- Node.js (v18+)
+- Python (3.12+)
+
+### 2. Backend Setup
 ```bash
 cd backend
 
-# Activate the virtual environment
+# Create Virtual Environment
+python3 -m venv venv
 source venv/bin/activate
 
-# Start the FastAPI server on http://localhost:8000
-python3 main.py
+# Install Dependencies
+pip install fastapi uvicorn sqlmodel requests newsapi-python spacy anthropic python-dotenv
+
+# Download NLP Model
+python -m spacy download en_core_web_sm
 ```
 
-### 3. Run the Data Scraper (Optional but Recommended)
-To populate your SQLite database with real journalists from NewsAPI, run the `scraper.py` script while inside the `backend` folder:
+### 3. Environment Variables
+Create a `.env` file in the `backend/` directory:
+```env
+NEWS_API_KEY=your_news_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key
+```
 
+### 4. Running the Application
+**Start Backend:**
 ```bash
-# Ensure your virtual environment is still activated
-python3 scraper.py
+cd backend
+python3 -m uvicorn main:app --reload
 ```
-*This will fetch recent articles on your beats and auto-create `database/journalists.db`.*
 
-### 4. Start the Frontend (React App)
-The frontend uses Node/npm and runs a local Vite server. Open a **second terminal**:
-
+**Start Frontend:**
 ```bash
 cd frontend
-
-# Install packages (only needed once)
 npm install
-
-# Start the React development server
 npm run dev
 ```
-Open your browser to `http://localhost:5173` to view the app!
+
+---
+*Built with excellence to demonstrate scalable, full-stack architectural design.*

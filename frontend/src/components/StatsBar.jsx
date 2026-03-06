@@ -1,7 +1,7 @@
 import React from 'react';
 import { Users, FileText } from 'lucide-react';
 
-export default function StatsBar() {
+export default function StatsBar({ stats }) {
     return (
         <div className="glass rounded-2xl p-6 lg:p-8">
             <h2 className="text-xl font-bold mb-5 text-slate-800 tracking-tight">Database Stats</h2>
@@ -12,7 +12,7 @@ export default function StatsBar() {
                         <Users size={24} strokeWidth={2.5} />
                     </div>
                     <div>
-                        <p className="text-3xl font-black text-slate-800 leading-none">0</p>
+                        <p className="text-3xl font-black text-slate-800 leading-none">{stats?.journalists || 0}</p>
                         <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest mt-1">Journalists</p>
                     </div>
                 </div>
@@ -22,7 +22,7 @@ export default function StatsBar() {
                         <FileText size={24} strokeWidth={2.5} />
                     </div>
                     <div>
-                        <p className="text-3xl font-black text-slate-800 leading-none">0</p>
+                        <p className="text-3xl font-black text-slate-800 leading-none">{stats?.articles || 0}</p>
                         <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest mt-1">Articles</p>
                     </div>
                 </div>

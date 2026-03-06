@@ -1,19 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Newspaper } from 'lucide-react';
 import SearchPanel from './components/SearchPanel';
 import JournalistCard from './components/JournalistCard';
 import PitchModal from './components/PitchModal';
-import StatsBar from './components/StatsBar';
+import Dashboard from './components/Dashboard';
 
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedJournalist, setSelectedJournalist] = useState(null);
 
-  const mockJournalists = [
-    { name: "Sarah Connor", beat: "Climate Tech & Energy", outlet: "Wired", score: 95 },
-    { name: "Michael Chang", beat: "Sustainable Agriculture", outlet: "The Guardian", score: 88 },
-    { name: "Elena Rostova", beat: "Wildlife Conservation", outlet: "National Geographic", score: 82 }
-  ];
+  // State for backend data
+  const [journalists, setJournalists] = useState([]);
+  const [stats, setStats] = useState({ journalists: 0, articles: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Search state
+  const [currentBeat, setCurrentBeat] = useState("environment");
+  const [currentTopic, setCurrentTopic] = useState("");
+
+  // Fetch Stats
+  useEffect(() => {
+    fetch('http://localhost:8000/api/stats')
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(err => console.error("Could not fetch stats:", err));
+  }, []);
+
+  // Fetch Journalists matching the beat
+  useEffect(() => {
+    setIsLoading(true);
+    // Replace hyphens with spaces for the API query
+    const beatQuery = currentBeat.replace('-', ' ');
+
+    fetch(`http://localhost:8000/api/journalists?beat=${encodeURIComponent(beatQuery)}`)
+      .then(res => res.json())
+      .then(data => {
+        setJournalists(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("Could not fetch journalists:", err);
+        setIsLoading(false);
+      });
+  }, [currentBeat]);
+
+  const handleSearch = (beatValue, topicValue) => {
+    setCurrentBeat(beatValue);
+    if (topicValue) setCurrentTopic(topicValue);
+  };
 
   const handleOpenPitch = (journalist) => {
     setSelectedJournalist(journalist);
@@ -43,25 +77,41 @@ function App() {
         <main className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column - Controls */}
           <div className="lg:col-span-4 space-y-6 animate-slide-up">
-            <SearchPanel />
-            <StatsBar />
+            <SearchPanel onSearch={handleSearch} currentBeat={currentBeat} />
+            <Dashboard stats={stats} />
           </div>
 
           {/* Right Column - Results */}
           <div className="lg:col-span-8 space-y-4 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             <div className="flex justify-between items-center mb-2 px-1">
               <h2 className="text-xl font-bold text-slate-800">Top Matches</h2>
-              <span className="text-sm font-semibold text-slate-500 bg-slate-200 px-3 py-1 rounded-full">{mockJournalists.length} Results</span>
+              <span className="text-sm font-semibold text-slate-500 bg-slate-200 px-3 py-1 rounded-full">{journalists.length} Results</span>
             </div>
 
             <div className="space-y-4">
-              {mockJournalists.map((j, i) => (
-                <JournalistCard
-                  key={i}
-                  {...j}
-                  onDraftPitch={() => handleOpenPitch(j)}
-                />
-              ))}
+              {isLoading ? (
+                <div className="glass rounded-2xl p-8 text-center text-slate-500 font-medium">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                  Analyzing journalist database...
+                </div>
+              ) : journalists.length === 0 ? (
+                <div className="glass rounded-2xl p-8 text-center text-slate-500 font-medium">
+                  No journalists found for your search criteria.
+                </div>
+              ) : (
+                journalists.map((j) => (
+                  <JournalistCard
+                    key={j.id}
+                    name={j.name}
+                    beat={j.beat}
+                    outlet={j.outlet}
+                    score={j.relevance_score || 0}
+                    tier={j.tier}
+                    ai_summary={j.ai_summary}
+                    onDraftPitch={() => handleOpenPitch(j)}
+                  />
+                ))
+              )}
             </div>
           </div>
         </main>
@@ -71,6 +121,7 @@ function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         journalist={selectedJournalist}
+        campaignTopic={currentTopic}
       />
     </div>
   );

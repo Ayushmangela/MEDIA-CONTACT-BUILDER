@@ -1,7 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Hash, Target } from 'lucide-react';
 
-export default function SearchPanel() {
+export default function SearchPanel({ onSearch, currentBeat }) {
+    const [localTopic, setLocalTopic] = useState("");
+    const [localBeat, setLocalBeat] = useState(currentBeat);
+
+    const handleTriggerSearch = () => {
+        onSearch(localBeat);
+    };
+
     return (
         <div className="glass rounded-2xl p-6 lg:p-8">
             <div className="flex items-center gap-3 mb-6">
@@ -18,6 +25,8 @@ export default function SearchPanel() {
                         </div>
                         <input
                             type="text"
+                            value={localTopic}
+                            onChange={(e) => setLocalTopic(e.target.value)}
                             placeholder="e.g. Stop deforestation..."
                             className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-normal"
                         />
@@ -30,7 +39,11 @@ export default function SearchPanel() {
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Hash size={18} className="text-slate-400" />
                         </div>
-                        <select className="appearance-none w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 cursor-pointer">
+                        <select
+                            value={localBeat}
+                            onChange={(e) => setLocalBeat(e.target.value)}
+                            className="appearance-none w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 cursor-pointer"
+                        >
                             <option value="environment">Environment</option>
                             <option value="animal-welfare">Animal Welfare</option>
                             <option value="food-systems">Food Systems</option>
@@ -42,7 +55,10 @@ export default function SearchPanel() {
                     </div>
                 </div>
 
-                <button className="relative w-full group overflow-hidden bg-indigo-600 text-white font-bold py-3.5 px-4 rounded-xl transition-all hover:shadow-lg hover:shadow-indigo-500/30 active:scale-[0.98] mt-2">
+                <button
+                    onClick={handleTriggerSearch}
+                    className="relative w-full group overflow-hidden bg-indigo-600 text-white font-bold py-3.5 px-4 rounded-xl transition-all hover:shadow-lg hover:shadow-indigo-500/30 active:scale-[0.98] mt-2"
+                >
                     <span className="relative z-10 flex items-center justify-center gap-2">
                         <Search size={18} />
                         Find Journalists
