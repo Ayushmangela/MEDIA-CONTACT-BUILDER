@@ -6,7 +6,7 @@ export default function SearchPanel({ onSearch, currentBeat }) {
     const [localBeat, setLocalBeat] = useState(currentBeat);
 
     const handleTriggerSearch = () => {
-        onSearch(localBeat);
+        onSearch(localBeat, localTopic);
     };
 
     return (

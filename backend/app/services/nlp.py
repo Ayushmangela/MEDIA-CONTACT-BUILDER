@@ -27,25 +27,47 @@ def extract_entities(text: str):
             
     return entities
 
-def run_nlp_profiling(journalist_id: int, db: Session):
-    """Analyze a single journalist's corpus to generate an AI Topic Summary profile using spaCy."""
+def run_nlp_profiling(journalist_id: int, topic: str, db: Session):
+    """Analyze a single journalist's corpus to generate an AI Context Summary using spaCy."""
     stmt = select(Article).where(Article.journalist_id == journalist_id)
     articles = db.exec(stmt).all()
     
     if not articles:
         return None
         
-    corpus = " ".join([f"{a.title} {a.description}" for a in articles if a.title])
+    context_sentences = []
+    topic_lower = topic.lower() if topic else ""
     
-    entities = extract_entities(corpus)
-    if not entities:
-        return "No specific entities identified in recent work."
+    for article in articles:
+        if len(context_sentences) >= 2:
+            break
+            
+        text = f"{article.title}. {article.description}."
+        if not text.strip() or text == ". .":
+            continue
+            
+        # Use spaCy for sentence boundary detection on THIS article
+        doc = nlp(text)
         
-    top_entities = [name for name, count in Counter(entities).most_common(5)]
-    
-    # Store this rich profile data
-    summary = f"Frequently covers topics involving: {', '.join(top_entities)}."
-    
+        for sent in doc.sents:
+            sent_text = sent.text.strip().replace("\n", " ")
+            if topic_lower and topic_lower in sent_text.lower():
+                # Basic cleanup: Ignore very short or weird fragments
+                if len(sent_text) > 30:
+                    already_exists = any(sent_text in item for item in context_sentences)
+                    if not already_exists:
+                        # Append sentence and associate its original URL
+                        url_str = article.url if article.url else ""
+                        context_sentences.append(f"{sent_text}|||{url_str}")
+                        if len(context_sentences) >= 2: # Limit to Top 2 Context Sentences
+                            break
+                            
+    if not context_sentences:
+        summary = "No specific contextual sentences found for this topic."
+    else:
+        # Join multiple context hits with a distinct separator
+        summary = " | ".join(context_sentences)
+        
     journalist = db.get(Journalist, journalist_id)
     if journalist:
         journalist.ai_summary = summary

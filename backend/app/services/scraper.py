@@ -13,21 +13,20 @@ BEATS_MAP = {
     "science": ["scientific research", "biology", "ecology", "astrophysics"]
 }
 
-def fetch_and_store_articles(beat_key: str, db: Session):
+def fetch_and_store_articles(topic: str, beat_key: str, db: Session):
     """
-    Fetches articles from NewsAPI for a given beat and stores them and 
+    Fetches articles from NewsAPI for a given topic and stores them and 
     associated journalists using SQLModel ORM.
     """
     if not NEWS_API_KEY:
         print("API Key missing")
         return {"status": "error", "message": "NewsAPI Key missing"}
         
-    keywords = BEATS_MAP.get(beat_key, [beat_key])
-    query = " OR ".join([f'"{kw}"' for kw in keywords])
+    query = f'"{topic}"'
     
-    # Last 5 days
-    from_date = (datetime.utcnow() - timedelta(days=5)).strftime('%Y-%m-%d')
-    url = f"https://newsapi.org/v2/everything?q={query}&from={from_date}&language=en&sortBy=relevancy&apiKey={NEWS_API_KEY}"
+    # Last 28 days (max for free tier)
+    from_date = (datetime.utcnow() - timedelta(days=28)).strftime('%Y-%m-%d')
+    url = f"https://newsapi.org/v2/everything?q={query}&from={from_date}&language=en&sortBy=relevancy&pageSize=100&apiKey={NEWS_API_KEY}"
     
     try:
         res = requests.get(url)

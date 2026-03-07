@@ -2,7 +2,7 @@
 
 An intelligent, AI-powered platform designed for advocacy organizations to intelligently discover, evaluate, and pitch journalists based on semantic resonance and mathematical recency algorithms.
 
-## ✨ V2 "Internship Excellence" Architecture
+## ✨ V2 "Production Excellence" Architecture
 
 This application was originally a prototype built on flat scripts. It has been completely rebuilt for production standards to demonstrate senior-level engineering capabilities:
 

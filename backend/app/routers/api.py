@@ -29,36 +29,47 @@ def get_dashboard_stats(db: Session = Depends(get_session)):
         "tier_distribution": tiers
     }
 
-@router.post("/trigger-scrape/{beat}")
-def trigger_data_collection(beat: str, background_tasks: BackgroundTasks, db: Session = Depends(get_session)):
-    """Non-blocking background scraping job."""
-    background_tasks.add_task(run_full_pipeline, beat, db)
-    return {"message": f"Background scraping and NLP analysis started for beat: {beat}"}
-
-def run_full_pipeline(beat: str, db: Session):
-    """Orchestrates Scrape -> NLP -> Score."""
-    print(f"Pipeline Started: {beat}")
-    fetch_and_store_articles(beat, db)
+@router.post("/search")
+def search_and_process(payload: Dict[str, Any], db: Session = Depends(get_session)):
+    """Synchronous pipeline that scrapes, analyzes, scores, and returns results for a specific topic."""
+    topic = payload.get("topic")
+    beat = payload.get("beat", "general")
     
-    # Run NLP & Scoring on newly added journalists
-    journalists = db.exec(select(Journalist).where(Journalist.beat == beat)).all()
-    for j in journalists:
-        run_nlp_profiling(j.id, db)
-        calculate_relevance(j.id, db)
-    print(f"Pipeline Completed: {beat}")
-
-@router.get("/journalists")
-def get_journalists(beat: str = None, db: Session = Depends(get_session)):
-    """Fetch highly-scored journalists with their articles and AI summaries."""
-    query = select(Journalist)
-    if beat:
-        query = query.where(Journalist.beat == beat)
+    if not topic:
+        raise HTTPException(status_code=400, detail="Topic required")
         
-    journalists = db.exec(query).all()
+    print(f"Pipeline Started for topic: {topic}")
     
-    # Sort in memory for complex ranking
-    sorted_j = sorted(journalists, key=lambda x: x.relevance_score, reverse=True)[:50]
-    return sorted_j
+    # 1. Scrape NewsAPI for the exact "Topic"
+    fetch_and_store_articles(topic, beat, db)
+    
+    # 2. Run NLP & Scoring on journalists attached to this beat
+    journalists = db.exec(select(Journalist).where(Journalist.beat == beat)).all()
+    # Store score breakdown in a temporary dictionary mapped by journalist ID
+    score_breakdowns = {}
+    for j in journalists:
+        run_nlp_profiling(j.id, topic, db)
+        score, breakdown = calculate_relevance(j.id, topic, beat, db)
+        score_breakdowns[j.id] = breakdown
+        
+    # 3. Get sorted and filtered results
+    query = select(Journalist).where(Journalist.beat == beat)
+    all_journalists = db.exec(query).all()
+    
+    # Strictly filter out journalists who did not mention the topic
+    relevant_journalists = [j for j in all_journalists if j.relevance_score > 0]
+    sorted_j = sorted(relevant_journalists, key=lambda x: x.relevance_score, reverse=True)[:50]
+    
+    # 4. Attach Recent Articles and Score Breakdown for UI Display
+    results = []
+    for j in sorted_j:
+        j_dict = j.dict()
+        articles = db.exec(select(Article).where(Article.journalist_id == j.id).order_by(Article.published_at.desc())).all()
+        j_dict["recent_articles"] = [{"title": a.title, "url": a.url} for a in articles[:15] if a.title] # Fetching more articles for the profile view
+        j_dict["score_breakdown"] = score_breakdowns.get(j.id, {})
+        results.append(j_dict)
+        
+    return results
 
 @router.post("/generate-pitch/{journalist_id}")
 async def create_detailed_pitch(journalist_id: int, payload: Dict[str, Any], db: Session = Depends(get_session)):

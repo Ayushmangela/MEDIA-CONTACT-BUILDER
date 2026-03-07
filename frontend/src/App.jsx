@@ -3,10 +3,12 @@ import { Newspaper } from 'lucide-react';
 import SearchPanel from './components/SearchPanel';
 import JournalistCard from './components/JournalistCard';
 import PitchModal from './components/PitchModal';
+import ProfileModal from './components/ProfileModal';
 import Dashboard from './components/Dashboard';
 
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedJournalist, setSelectedJournalist] = useState(null);
 
   // State for backend data
@@ -26,13 +28,17 @@ function App() {
       .catch(err => console.error("Could not fetch stats:", err));
   }, []);
 
-  // Fetch Journalists matching the beat
-  useEffect(() => {
-    setIsLoading(true);
-    // Replace hyphens with spaces for the API query
-    const beatQuery = currentBeat.replace('-', ' ');
+  // Search execution
+  const handleSearch = (beatValue, topicValue) => {
+    setCurrentBeat(beatValue);
+    if (topicValue) setCurrentTopic(topicValue);
 
-    fetch(`http://localhost:8000/api/journalists?beat=${encodeURIComponent(beatQuery)}`)
+    setIsLoading(true);
+    fetch(`http://localhost:8000/api/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beat: beatValue, topic: topicValue })
+    })
       .then(res => res.json())
       .then(data => {
         setJournalists(data);
@@ -42,16 +48,16 @@ function App() {
         console.error("Could not fetch journalists:", err);
         setIsLoading(false);
       });
-  }, [currentBeat]);
-
-  const handleSearch = (beatValue, topicValue) => {
-    setCurrentBeat(beatValue);
-    if (topicValue) setCurrentTopic(topicValue);
   };
 
   const handleOpenPitch = (journalist) => {
     setSelectedJournalist(journalist);
     setIsModalOpen(true);
+  };
+
+  const handleOpenProfile = (journalist) => {
+    setSelectedJournalist(journalist);
+    setIsProfileModalOpen(true);
   };
 
   return (
@@ -108,7 +114,10 @@ function App() {
                     score={j.relevance_score || 0}
                     tier={j.tier}
                     ai_summary={j.ai_summary}
+                    recent_articles={j.recent_articles}
+                    score_breakdown={j.score_breakdown}
                     onDraftPitch={() => handleOpenPitch(j)}
+                    onViewProfile={() => handleOpenProfile(j)}
                   />
                 ))
               )}
@@ -122,6 +131,12 @@ function App() {
         onClose={() => setIsModalOpen(false)}
         journalist={selectedJournalist}
         campaignTopic={currentTopic}
+      />
+
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        journalist={selectedJournalist}
       />
     </div>
   );
