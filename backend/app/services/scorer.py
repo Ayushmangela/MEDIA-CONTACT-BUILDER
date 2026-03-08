@@ -46,7 +46,8 @@ def calculate_relevance(journalist_id: int, topic: str, search_beat: str, db: Se
         for article in articles:
             title = (article.title or "").lower()
             desc = (article.description or "").lower()
-            if topic_lower in title or topic_lower in desc:
+            content = (article.content or "").lower()
+            if topic_lower in title or topic_lower in desc or topic_lower in content:
                 keyword_score = 25
                 break # Just finding one solid overlap maxes this out
                 

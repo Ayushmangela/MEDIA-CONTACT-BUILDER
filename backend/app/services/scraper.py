@@ -1,5 +1,7 @@
 import os
+import re
 import requests
+from bs4 import BeautifulSoup
 from sqlmodel import Session, select
 from datetime import datetime, timedelta
 from ..models.schemas import Journalist, Article
@@ -55,31 +57,76 @@ def fetch_and_store_articles(topic: str, beat_key: str, db: Session):
             except:
                 pub_date = datetime.utcnow()
                 
-            # 1. Check Journalist
+            # 1. OPTIMIZATION: Check Article first so we don't scrape pages we already have
+            stmt_art = select(Article).where(Article.url == url)
+            existing_article = db.exec(stmt_art).first()
+            
+            if existing_article:
+                continue # Skip the slow deep scrape if we already have it
+                
+            # Deep scrape content and OSINT Email
+            content_text = ""
+            extracted_email = None
+            if url:
+                try:
+                    # Short timeout so one bad link doesn't hang the loop
+                    # Added User-Agent to prevent sites from blocking the python default agent
+                    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+                    page = requests.get(url, headers=headers, timeout=5)
+                    soup = BeautifulSoup(page.content, 'html.parser')
+                    paragraphs = soup.find_all('p')
+                    content_text = "\n".join([p.get_text().strip() for p in paragraphs if p.get_text().strip()])
+                    # Truncate to save DB space
+                    content_text = content_text[:10000]
+                    
+                    # OSINT Scan for public emails in the raw HTML
+                    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+                    found_emails = re.findall(email_pattern, page.text)
+                    
+                    # Filter for plausible journalist emails (not mostly image/asset links like @2x.png)
+                    for email in found_emails:
+                        email_lower = email.lower()
+                        # Avoid scraping weird ad-tracker or image domains
+                        if ".png" not in email_lower and ".jpg" not in email_lower and "sentry" not in email_lower and "contact" not in email_lower and "info" not in email_lower:
+                            extracted_email = email_lower
+                            break # Grab the first solid hit
+                            
+                except Exception as e:
+                    print(f"Failed to deep scrape {url}: {e}")
+            
+            # 2. Check Journalist
             stmt = select(Journalist).where(Journalist.name == author)
             journalist = db.exec(stmt).first()
             
             if not journalist:
-                journalist = Journalist(name=author, outlet=source_name, beat=beat_key)
+                journalist = Journalist(name=author, email=extracted_email, outlet=source_name, beat=beat_key)
                 db.add(journalist)
                 db.commit()
                 db.refresh(journalist)
                 added_journalists += 1
+            elif extracted_email and not journalist.email:
+                # If we found an email this time but didn't have one before, update it
+                journalist.email = extracted_email
+                db.add(journalist)
+                db.commit()
+                db.refresh(journalist)
                 
-            # 2. Check Article
-            stmt_art = select(Article).where(Article.url == url)
-            existing_article = db.exec(stmt_art).first()
-            
-            if not existing_article:
-                new_article = Article(
-                    title=title, 
-                    description=desc, 
-                    url=url, 
-                    published_at=pub_date,
-                    journalist_id=journalist.id
-                )
+            # 3. Save new Article
+            new_article = Article(
+                title=title, 
+                description=desc, 
+                content=content_text,
+                url=url, 
+                published_at=pub_date,
+                journalist_id=journalist.id
+            )
+            try:
                 db.add(new_article)
+                db.commit()
                 added_articles += 1
+            except Exception as e:
+                db.rollback()
+                print(f"Skipping duplicate or invalid article: {url}")
                 
         db.commit()
         return {"status": "success", "journalists_added": added_journalists, "articles_added": added_articles}

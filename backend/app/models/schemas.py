@@ -5,6 +5,7 @@ from datetime import datetime
 class Journalist(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True, unique=True)
+    email: Optional[str] = None
     outlet: str
     tier: str = Field(default="Standard") # Premium, Standard, Niche
     beat: str
@@ -18,6 +19,7 @@ class Article(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     description: Optional[str] = None
+    content: Optional[str] = None
     url: str = Field(unique=True)
     published_at: datetime
     

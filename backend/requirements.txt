@@ -6,3 +6,4 @@ spacy
 sqlmodel
 anthropic
 python-dotenv
+beautifulsoup4

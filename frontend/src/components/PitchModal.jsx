@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, Copy, Sparkles, Building2, UserCircle, SlidersHorizontal } from 'lucide-react';
+import { X, Send, Copy, Sparkles, Building2, UserCircle, SlidersHorizontal, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function PitchModal({ isOpen, onClose, journalist, campaignTopic }) {
@@ -133,11 +133,20 @@ export default function PitchModal({ isOpen, onClose, journalist, campaignTopic 
                                 <div className="pb-4 border-b border-slate-100 space-y-2">
                                     <div className="flex items-center gap-2">
                                         <span className="font-semibold text-slate-500 w-16">To:</span>
-                                        <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-700">{journalist.name.toLowerCase().replace(' ', '.')}@{journalist.outlet.toLowerCase().replace(' ', '')}.com</span>
+                                        {journalist.email ? (
+                                            <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded flex items-center gap-1.5 font-medium">
+                                                <CheckCircle size={12} />
+                                                {journalist.email}
+                                            </span>
+                                        ) : (
+                                            <span className="bg-rose-100 px-2 py-0.5 rounded text-rose-700 font-medium">
+                                                [No Public Email Found]
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="font-semibold text-slate-500 w-16">Subject:</span>
-                                        <span className="font-bold">Pitch Idea: Data on {journalist.beat} Trends</span>
+                                        <span className="font-bold">Pitch Idea: {campaignTopic ? campaignTopic : `Data on ${journalist.beat} Trends`}</span>
                                     </div>
                                 </div>
 

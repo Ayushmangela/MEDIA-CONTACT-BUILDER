@@ -42,8 +42,8 @@ def run_nlp_profiling(journalist_id: int, topic: str, db: Session):
         if len(context_sentences) >= 2:
             break
             
-        text = f"{article.title}. {article.description}."
-        if not text.strip() or text == ". .":
+        text = f"{article.title}. {article.description}. {article.content or ''}"
+        if not text.strip() or text == ". . . ":
             continue
             
         # Use spaCy for sentence boundary detection on THIS article
