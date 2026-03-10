@@ -1,128 +1,137 @@
 import React, { useState } from 'react';
-import { PenTool, CheckCircle, TrendingUp, Building2, BrainCircuit, BookOpen, ChevronDown, Terminal } from 'lucide-react';
+import { PenTool, ChevronDown, Building, Tag, CheckCircle, BarChart3, ChevronUp, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function JournalistCard({ name, outlet, beat, score, ai_summary, tier, recent_articles, score_breakdown, onDraftPitch, onViewProfile }) {
-    const [isExpanded, setIsExpanded] = useState(false);
-    const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+export default function JournalistCard({ journalist, onDraftPitch, onViewProfile, index }) {
+    const [expanded, setExpanded] = useState(false);
+    const { name, outlet, beat, relevance_score: score, ai_summary, tier, score_breakdown } = journalist;
 
-    const isHighMatch = score >= 80;
-    const ScoreIcon = isHighMatch ? CheckCircle : TrendingUp;
+    const getScoreColor = (s) => {
+        if (s >= 80) return "text-emerald-700 bg-emerald-50 border-emerald-200";
+        if (s >= 50) return "text-blue-700 bg-blue-50 border-blue-200";
+        return "text-gray-700 bg-gray-50 border-gray-200";
+    };
+
+    const getTierBadge = (t) => {
+        switch (t) {
+            case 'Premium': return "bg-amber-100 text-amber-800 border-amber-200";
+            case 'Major': return "bg-blue-100 text-blue-800 border-blue-200";
+            case 'Niche': return "bg-teal-100 text-teal-800 border-teal-200";
+            default: return "bg-gray-100 text-gray-800 border-gray-200";
+        }
+    };
+
+    const contextText = ai_summary
+        ? (ai_summary.includes(' | ') ? ai_summary.split(' | ')[0] : ai_summary).split('|||')[0]
+        : null;
+    const showContext = contextText && !contextText.includes('No specific contextual');
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -4, transition: { duration: 0.2 } }}
-            className="group glass rounded-2xl p-5 border border-white/40 shadow-sm hover:shadow-xl hover:border-indigo-100 flex flex-col sm:flex-row gap-5 items-start sm:items-center relative overflow-hidden"
+            transition={{ duration: 0.2, delay: typeof index === 'number' ? Math.min(index * 0.05, 0.3) : 0 }}
+            className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col gap-4"
         >
-            {/* Tier Badge Ribbon */}
-            {tier === "Premium" && (
-                <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-400 to-orange-400 text-white text-[10px] font-black uppercase tracking-widest px-8 py-1 transform translate-x-6 translate-y-2 rotate-45 shadow-sm">
-                    Premium
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 flex-shrink-0 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">
+                        {name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <button
+                                onClick={onViewProfile}
+                                className="text-lg font-bold text-gray-900 hover:text-indigo-600 transition-colors text-left"
+                            >
+                                {name}
+                            </button>
+                            <span className={`px-2 py-0.5 text-xs font-semibold border rounded-full ${getTierBadge(tier)}`}>
+                                {tier}
+                            </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                            <span className="flex items-center gap-1.5"><Building size={14} className="text-gray-400" /> {outlet}</span>
+                            <span className="flex items-center gap-1.5"><Tag size={14} className="text-gray-400" /> {beat.replace('-', ' ')}</span>
+                        </div>
+                    </div>
                 </div>
-            )}
 
-            {tier === "Major" && (
-                <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-400 to-blue-400 text-white text-[10px] font-black uppercase tracking-widest px-8 py-1 transform translate-x-6 translate-y-2 rotate-45 shadow-sm">
-                    Major
-                </div>
-            )}
-
-            {/* Avatar Section */}
-            <div className="flex-shrink-0 relative mt-2 sm:mt-0">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-inner flex items-center justify-center text-white font-bold text-xl ring-4 ring-white">
-                    {initials}
-                </div>
-                <div className={`absolute -bottom-2 -nav-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-sm flex items-center gap-1 ${isHighMatch ? 'bg-emerald-500' : 'bg-amber-500'}`}>
-                    <ScoreIcon size={10} />
-                    {score}%
+                <div className="flex flex-shrink-0">
+                    <div className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-2 text-sm ${getScoreColor(score)}`}>
+                        {score >= 80 ? <CheckCircle size={16} /> : <BarChart3 size={16} />}
+                        {score}% Match
+                    </div>
                 </div>
             </div>
 
-            {/* Info Section */}
-            <div className="flex-grow w-full">
-                <button
-                    onClick={onViewProfile}
-                    className="text-xl font-bold text-slate-800 mb-1 leading-tight group-hover:text-indigo-700 hover:underline transition-colors pr-10 text-left focus:outline-none"
-                >
-                    {name}
-                </button>
+            {showContext && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 text-sm text-slate-700 leading-relaxed shadow-sm">
+                    <strong className="font-semibold text-slate-900 mr-2">AI Context:</strong>
+                    {contextText}
+                </div>
+            )}
 
-                <div className="flex flex-wrap items-center gap-3 text-sm mb-3">
-                    <div className="flex items-center gap-1.5 text-slate-600 font-medium">
-                        <Building2 size={15} className="text-slate-400" />
-                        {outlet}
-                    </div>
-                    <span className="hidden sm:inline text-slate-300">•</span>
-                    <div className="px-2.5 py-1 bg-slate-100 rounded-lg text-slate-600 font-medium text-xs border border-slate-200">
-                        {beat.replace('-', ' ')}
-                    </div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2 pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <button
+                        onClick={onDraftPitch}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+                    >
+                        <PenTool size={16} /> Pitch
+                    </button>
+                    <button
+                        onClick={onViewProfile}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm"
+                    >
+                        <Eye size={16} /> Profile
+                    </button>
                 </div>
 
-                {/* Score Breakdown Section - Algorithmic Thinking UI */}
                 {score_breakdown && (
-                    <div className="mt-2 mb-3">
-                        <button
-                            onClick={() => setIsExpanded(!isExpanded)}
-                            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors focus:outline-none group/btn"
+                    <button
+                        onClick={() => setExpanded(!expanded)}
+                        className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors ml-auto"
+                    >
+                        Match Details {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+                )}
+            </div>
+
+            {score_breakdown && (
+                <AnimatePresence>
+                    {expanded && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
                         >
-                            <Terminal size={12} className="text-indigo-400" />
-                            Why this match?
-                            <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} className="text-slate-400 group-hover/btn:text-indigo-500">
-                                <ChevronDown size={14} />
-                            </motion.div>
-                        </button>
-
-                        <AnimatePresence>
-                            {isExpanded && (
-                                <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: "auto", opacity: 1, marginTop: "8px" }}
-                                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                                    className="overflow-hidden"
-                                >
-                                    <div className="bg-[#1e1e1e] rounded-xl p-3 border border-slate-700 font-mono text-[11px] leading-relaxed shadow-inner">
-                                        <div className="text-slate-400 mb-1">Relevance Score: <span className="text-white font-bold">{score}%</span></div>
-                                        <div className="text-slate-500">Score Breakdown:</div>
-                                        <div className="text-emerald-400 ml-2">
-                                            + {score_breakdown.keyword_overlap || 0}% Topic keyword overlap<br />
-                                            + {score_breakdown.beat_match || 0}% Historical beat alignment<br />
-                                            + {score_breakdown.volume || 0}% Article volume consistency<br />
-                                            + {score_breakdown.outlet_tier || 0}% Publication authority
-                                        </div>
+                            <div className="mt-2 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                                <h4 className="font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-2">Why is this a match?</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-gray-600 max-w-2xl">
+                                    <div className="flex justify-between items-center pb-1 border-b border-gray-100 sm:border-0">
+                                        <span>Topic Keyword</span>
+                                        <span className="font-semibold text-indigo-600">+{score_breakdown.keyword_overlap || 0}</span>
                                     </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                )}
-
-                {/* Topic Context Section */}
-                {ai_summary && (
-                    <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 mt-2 text-sm text-emerald-900/80 flex gap-2">
-                        <BrainCircuit size={16} className="text-emerald-500 mt-0.5 flex-shrink-0" />
-                        <span className="leading-relaxed">
-                            <strong className="font-semibold text-emerald-700">Topic Context:</strong> "
-                            {ai_summary.includes(' | ') ? ai_summary.split(' | ')[0].split('|||')[0] + '...' : ai_summary.split('|||')[0]}
-                            "
-                        </span>
-                    </div>
-                )}
-            </div>
-
-            {/* Action Section */}
-            <div className="w-full sm:w-auto mt-2 sm:mt-0">
-                <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={onDraftPitch}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-indigo-600 font-bold py-2.5 px-6 rounded-xl border border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-colors shadow-sm"
-                >
-                    <PenTool size={18} />
-                    Draft Pitch
-                </motion.button>
-            </div>
-
+                                    <div className="flex justify-between items-center pb-1 border-b border-gray-100 sm:border-0">
+                                        <span>Beat Alignment</span>
+                                        <span className="font-semibold text-indigo-600">+{score_breakdown.beat_match || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center pb-1 border-b border-gray-100 sm:border-0">
+                                        <span>Recent Volume</span>
+                                        <span className="font-semibold text-indigo-600">+{score_breakdown.volume || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span>Outlet Authority</span>
+                                        <span className="font-semibold text-indigo-600">+{score_breakdown.outlet_tier || 0}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            )}
         </motion.div>
     );
 }

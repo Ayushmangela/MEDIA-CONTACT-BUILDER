@@ -1,133 +1,143 @@
 import React from 'react';
-import { X, Building2, BookOpen, BrainCircuit } from 'lucide-react';
+import { X, Building2, BookOpen, BrainCircuit, ExternalLink, Tag, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ProfileModal({ isOpen, onClose, journalist }) {
     if (!journalist) return null;
-
     const initials = journalist.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-    // Parse AI Summary into bullet points if it's the standard structured output
-    const contextSnippets = journalist.ai_summary
-        ? journalist.ai_summary.split(" | ").filter(s => s.trim() !== "" && s !== "No specific contextual sentences found for this topic.")
-        : [];
+    const snippets = (journalist.ai_summary || '')
+        .split(' | ')
+        .filter(s => s.trim() && !s.includes('No specific'));
+
+    const bd = journalist.score_breakdown;
+    const bars = bd ? [
+        { label: 'Keyword Match', val: bd.keyword_overlap || 0, color: 'bg-violet-500', text: 'text-violet-700' },
+        { label: 'Beat Alignment', val: bd.beat_match || 0, color: 'bg-blue-500', text: 'text-blue-700' },
+        { label: 'Article Volume', val: bd.volume || 0, color: 'bg-emerald-500', text: 'text-emerald-700' },
+        { label: 'Outlet Authority', val: bd.outlet_tier || 0, color: 'bg-amber-500', text: 'text-amber-700' },
+    ] : [];
 
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    {/* Backdrop */}
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 opacity-100 transition-opacity">
                     <motion.div
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
                     />
 
-                    {/* Modal Content */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        initial={{ opacity: 0, scale: 0.96, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="relative w-full max-w-2xl bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-700 text-slate-300 font-mono text-sm"
+                        exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                        className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200"
                     >
-                        {/* Header mimicking a terminal title bar */}
-                        <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex justify-between items-center">
-                            <div className="flex gap-2">
-                                <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-                                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                                <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                        {/* Header */}
+                        <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4 flex-shrink-0 bg-slate-50/50">
+                            <div className="flex items-center gap-5">
+                                <div className="w-14 h-14 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xl flex-shrink-0 border-2 border-white shadow-sm">
+                                    {initials}
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-slate-800 tracking-tight mb-1">{journalist.name}</h2>
+                                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 font-medium">
+                                        <span className="flex items-center gap-1.5"><Building2 size={16} />{journalist.outlet}</span>
+                                        <span className="flex items-center gap-1.5 capitalize"><Tag size={16} />{(journalist.beat || '').replace('-', ' ')}</span>
+                                    </div>
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Relevance Score</span>
+                                        <span className="text-sm font-bold px-2 py-0.5 rounded-full text-emerald-700 bg-emerald-50 border border-emerald-200 flex items-center gap-1">
+                                            <CheckCircle size={14} /> {journalist.relevance_score || 0}%
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="text-slate-400 text-xs font-bold tracking-widest">PROFILER_VIEW.EXE</div>
-                            <button
-                                onClick={onClose}
-                                className="text-slate-400 hover:text-white transition-colors"
-                            >
-                                <X size={18} />
+                            <button className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors flex-shrink-0" onClick={onClose}>
+                                <X size={20} />
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8 bg-white">
 
-                            {/* Top Identity Block */}
-                            <div>
-                                <span className="text-indigo-400">Journalist:</span> <span className="text-white font-bold text-base">{journalist.name}</span><br />
-                                <span className="text-indigo-400">Publication:</span> <span className="text-slate-300">{journalist.outlet}</span><br />
-                                <span className="text-indigo-400">Primary Beat:</span> <span className="text-slate-300 capitalize">{journalist.beat.replace('-', ' ')}</span>
-                            </div>
+                            {/* Score bars */}
+                            {bars.length > 0 && (
+                                <section>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Score Breakdown</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {bars.map(({ label, val, color, text }) => (
+                                            <div key={label} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{label}</span>
+                                                    <span className={`text-sm font-black ${text}`}>+{val}%</span>
+                                                </div>
+                                                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                                                    <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${(val / 100) * 100}%` }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
 
-                            {/* Topic Context Block */}
-                            <div>
-                                <div className="text-emerald-400 mb-2">Extracted Topic Context:</div>
-                                {contextSnippets.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {contextSnippets.map((snippet, i) => {
-                                            const parts = snippet.split('|||');
-                                            const text = parts[0];
-                                            const url = parts.length > 1 ? parts[1] : null;
-
+                            {/* AI Context */}
+                            {snippets.length > 0 && (
+                                <section>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <BrainCircuit size={18} className="text-indigo-500" />
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Topic Context</p>
+                                    </div>
+                                    <div className="flex flex-col gap-3">
+                                        {snippets.map((raw, i) => {
+                                            const [text, url] = raw.split('|||');
                                             return (
-                                                <div key={i} className="pl-3 border-l-2 border-emerald-500/50 text-slate-400 italic bg-emerald-950/20 py-1.5 pr-2 rounded-r-md">
-                                                    "{text}"
+                                                <div key={i} className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+                                                    <p className="text-sm text-emerald-900 leading-relaxed italic font-medium">"{text}"</p>
                                                     {url && (
-                                                        <div className="mt-1">
-                                                            <a
-                                                                href={url}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="text-emerald-400 hover:text-emerald-300 text-xs not-italic hover:underline transition-colors"
-                                                            >
-                                                                Read source article →
-                                                            </a>
-                                                        </div>
+                                                        <a href={url} target="_blank" rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-600 hover:text-emerald-800 transition-colors"
+                                                        >
+                                                            <ExternalLink size={14} /> Read source article
+                                                        </a>
                                                     )}
                                                 </div>
                                             );
                                         })}
                                     </div>
-                                ) : (
-                                    <div className="pl-4 text-slate-500 italic">{journalist.ai_summary || "No specific contextual sentences found for this topic."}</div>
-                                )}
-                            </div>
-
-                            {/* Score Breakdown Block */}
-                            {journalist.score_breakdown && (
-                                <div>
-                                    <div className="text-amber-400 mb-1">Algorithmic Relevance ({journalist.relevance_score || 0}%):</div>
-                                    <ul className="pl-4 space-y-1">
-                                        <li><span className="text-indigo-400">+{journalist.score_breakdown.keyword_overlap || 0}%</span> Topic keyword overlap</li>
-                                        <li><span className="text-indigo-400">+{journalist.score_breakdown.beat_match || 0}%</span> Historical beat match</li>
-                                        <li><span className="text-indigo-400">+{journalist.score_breakdown.volume || 0}%</span> Article volume weight</li>
-                                        <li><span className="text-indigo-400">+{journalist.score_breakdown.outlet_tier || 0}%</span> Publication authority</li>
-                                    </ul>
-                                </div>
+                                </section>
                             )}
 
-                            {/* Recent Articles Block */}
-                            <div>
-                                <div className="text-cyan-400 mb-1">Recent Articles ({journalist.recent_articles?.length || 0}):</div>
-                                {journalist.recent_articles && journalist.recent_articles.length > 0 ? (
-                                    <ul className="pl-4 space-y-2">
-                                        {journalist.recent_articles.map((article, i) => (
-                                            <li key={i} className="flex items-start gap-2">
-                                                <span className="text-slate-500 mt-0.5">{i + 1}.</span>
-                                                <a
-                                                    href={article.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="hover:text-cyan-300 hover:underline transition-colors"
-                                                >
-                                                    {article.title}
-                                                </a>
-                                            </li>
+                            {/* Articles */}
+                            <section>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <BookOpen size={18} className="text-blue-500" />
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Recent Articles</p>
+                                    <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
+                                        {journalist.recent_articles?.length || 0}
+                                    </span>
+                                </div>
+                                {journalist.recent_articles?.length > 0 ? (
+                                    <div className="flex flex-col gap-2">
+                                        {journalist.recent_articles.map((a, i) => (
+                                            <a key={i} href={a.url} target="_blank" rel="noopener noreferrer"
+                                                className="group flex items-start gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all text-decoration-none"
+                                            >
+                                                <span className="text-sm font-bold text-slate-300 tabular-nums pt-0.5 group-hover:text-blue-300">
+                                                    {String(i + 1).padStart(2, '0')}
+                                                </span>
+                                                <p className="text-sm font-semibold text-slate-700 leading-snug flex-1 group-hover:text-slate-900">{a.title}</p>
+                                                <ExternalLink size={16} className="text-slate-400 group-hover:text-blue-500 mt-0.5 flex-shrink-0" />
+                                            </a>
                                         ))}
-                                    </ul>
+                                    </div>
                                 ) : (
-                                    <div className="pl-4 text-slate-500 italic">No recent articles found.</div>
+                                    <p className="text-sm text-slate-500 italic bg-slate-50 p-4 rounded-xl border border-slate-100">No recent articles found.</p>
                                 )}
-                            </div>
-
+                            </section>
                         </div>
                     </motion.div>
                 </div>

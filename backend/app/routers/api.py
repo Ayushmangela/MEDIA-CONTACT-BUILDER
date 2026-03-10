@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, Query
 from sqlmodel import Session, select
 from typing import List, Dict, Any
 from ..core.db import get_session
@@ -7,8 +7,15 @@ from ..services.scraper import fetch_and_store_articles
 from ..services.nlp import run_nlp_profiling
 from ..services.scorer import calculate_relevance
 from ..services.pitcher import generate_ai_pitch
+from ..services.campaign_suggester import get_campaign_suggestions
 
 router = APIRouter(prefix="/api")
+
+@router.get("/campaign-suggestions")
+def get_suggestions(beat: str = Query(default="environment"), db: Session = Depends(get_session)):
+    """Returns context-aware campaign pitch suggestions based on Pitch history and recent Article coverage."""
+    suggestions = get_campaign_suggestions(beat, db)
+    return suggestions
 
 @router.get("/stats")
 def get_dashboard_stats(db: Session = Depends(get_session)):

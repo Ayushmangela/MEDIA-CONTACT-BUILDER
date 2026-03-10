@@ -1,71 +1,56 @@
 import React, { useState } from 'react';
-import { Search, Hash, Target } from 'lucide-react';
+import { Search, ChevronDown, ArrowRight } from 'lucide-react';
+
+const BEATS = [
+    { value: 'environment', label: '🌍 Environment' },
+    { value: 'animal-welfare', label: '🐾 Animal Welfare' },
+    { value: 'food-systems', label: '🌾 Food Systems' },
+    { value: 'science', label: '🔬 Science' },
+];
 
 export default function SearchPanel({ onSearch, currentBeat }) {
-    const [localTopic, setLocalTopic] = useState("");
-    const [localBeat, setLocalBeat] = useState(currentBeat);
+    const [topic, setTopic] = useState('');
+    const [beat, setBeat] = useState(currentBeat);
 
-    const handleTriggerSearch = () => {
-        onSearch(localBeat, localTopic);
-    };
+    const submit = e => { e?.preventDefault(); onSearch(beat, topic); };
 
     return (
-        <div className="glass rounded-2xl p-6 lg:p-8">
-            <div className="flex items-center gap-3 mb-6">
-                <Target className="text-indigo-600" size={24} />
-                <h2 className="text-xl font-bold text-slate-800 tracking-tight">Campaign Query</h2>
-            </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Campaign Query</p>
 
-            <div className="space-y-5 flex flex-col">
-                <div className="space-y-1">
-                    <label className="block text-sm font-semibold text-slate-700 ml-1">Campaign Topic</label>
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search size={18} className="text-slate-400" />
-                        </div>
-                        <input
-                            type="text"
-                            value={localTopic}
-                            onChange={(e) => setLocalTopic(e.target.value)}
-                            placeholder="e.g. Stop deforestation..."
-                            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-normal"
-                        />
-                    </div>
+            <form onSubmit={submit} className="flex flex-col gap-3">
+                {/* Topic */}
+                <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <input
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-900 py-2.5 pl-9 pr-3 text-sm font-medium outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400"
+                        type="text"
+                        value={topic}
+                        onChange={e => setTopic(e.target.value)}
+                        placeholder="Campaign topic…"
+                    />
                 </div>
 
-                <div className="space-y-1">
-                    <label className="block text-sm font-semibold text-slate-700 ml-1">Beat / Focus Area</label>
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Hash size={18} className="text-slate-400" />
-                        </div>
-                        <select
-                            value={localBeat}
-                            onChange={(e) => setLocalBeat(e.target.value)}
-                            className="appearance-none w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 cursor-pointer"
-                        >
-                            <option value="environment">Environment</option>
-                            <option value="animal-welfare">Animal Welfare</option>
-                            <option value="food-systems">Food Systems</option>
-                            <option value="science">Science</option>
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                        </div>
-                    </div>
+                {/* Beat */}
+                <div className="relative">
+                    <select
+                        value={beat}
+                        onChange={e => setBeat(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-900 py-2.5 pl-3 pr-9 text-sm font-medium outline-none appearance-none cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                    >
+                        {BEATS.map(b => (
+                            <option key={b.value} value={b.value}>{b.label}</option>
+                        ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 </div>
 
-                <button
-                    onClick={handleTriggerSearch}
-                    className="relative w-full group overflow-hidden bg-indigo-600 text-white font-bold py-3.5 px-4 rounded-xl transition-all hover:shadow-lg hover:shadow-indigo-500/30 active:scale-[0.98] mt-2"
-                >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                        <Search size={18} />
-                        Find Journalists
-                    </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <button type="submit" className="mt-1 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm">
+                    <Search size={14} />
+                    <span>Find Journalists</span>
+                    <ArrowRight size={14} className="ml-1" />
                 </button>
-            </div>
+            </form>
         </div>
     );
 }

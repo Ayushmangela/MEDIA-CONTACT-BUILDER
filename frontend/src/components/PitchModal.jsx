@@ -1,169 +1,144 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, Copy, Sparkles, Building2, UserCircle, SlidersHorizontal, CheckCircle } from 'lucide-react';
+import { X, Sparkles, Building2, UserCircle, Copy, Send, RefreshCw, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const TONES = [
+    { id: 'Story-driven', desc: 'Human impact angle', accentClass: 'text-violet-600 bg-violet-50 border-violet-200' },
+    { id: 'Data-heavy', desc: 'Stats & exclusives', accentClass: 'text-blue-600 bg-blue-50 border-blue-200' },
+    { id: 'Quick Check-in', desc: 'Soft, brief intro', accentClass: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+];
+
 export default function PitchModal({ isOpen, onClose, journalist, campaignTopic }) {
-    const [pitch, setPitch] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [tone, setTone] = useState("Story-driven");
+    const [pitch, setPitch] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [tone, setTone] = useState('Story-driven');
+    const [copied, setCopied] = useState(false);
 
-    // Only run when 'isOpen' turns true
-    useEffect(() => {
-        if (isOpen && journalist) {
-            generatePitch(tone);
-        }
-    }, [isOpen]); // Intentionally leaving out dependencies to prevent re-fetching constantly
+    useEffect(() => { if (isOpen && journalist) gen(tone); }, [isOpen]);
 
-    const generatePitch = (selectedTone) => {
-        setIsLoading(true);
-        setError("");
-        setPitch("");
-
+    const gen = t => {
+        setLoading(true); setError(''); setPitch('');
         fetch(`http://localhost:8000/api/generate-pitch/${journalist.id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                topic: campaignTopic || "Our latest advocacy initiative",
-                tone: selectedTone
-            })
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic: campaignTopic || 'Our advocacy initiative', tone: t }),
         })
-            .then(res => {
-                if (!res.ok) throw new Error("Failed to generate pitch");
-                return res.json();
-            })
-            .then(data => {
-                setPitch(data.pitch);
-                setIsLoading(false);
-            })
-            .catch(err => {
-                setError(err.message);
-                setIsLoading(false);
-            });
+            .then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); })
+            .then(d => { setPitch(d.pitch); setLoading(false); })
+            .catch(e => { setError(e.message); setLoading(false); });
     };
 
-    const handleToneChange = (newTone) => {
-        setTone(newTone);
-        generatePitch(newTone);
-    };
+    const copy = () => { navigator.clipboard.writeText(pitch); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
     if (!isOpen || !journalist) return null;
+    const initials = journalist.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                {/* Backdrop */}
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
                 <motion.div
+                    className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
                     onClick={onClose}
                 />
 
-                {/* Modal Content */}
                 <motion.div
-                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    initial={{ scale: 0.96, opacity: 0, y: 20 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                    className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+                    exit={{ scale: 0.96, opacity: 0, y: 20 }}
+                    className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200"
                 >
-                    {/* Header Ribbon */}
-                    <div className="h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 w-full"></div>
-
                     {/* Header */}
-                    <div className="p-6 sm:p-8 flex justify-between items-start border-b border-slate-100 bg-slate-50">
-                        <div className="flex gap-4 items-center">
-                            <div className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl flex-shrink-0 relative overflow-hidden">
-                                <Sparkles size={28} className="relative z-10" />
-                                <div className="absolute inset-0 bg-indigo-200/50 animate-pulse"></div>
+                    <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50 flex-shrink-0">
+                        <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg flex-shrink-0">
+                            {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Sparkles size={16} className="text-indigo-500" />
+                                <h3 className="text-lg font-bold text-slate-800 tracking-tight">AI Strategy Pitch</h3>
                             </div>
-                            <div>
-                                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">AI Strategy Pitch</h2>
-                                <div className="flex items-center gap-3 mt-1.5 text-sm font-medium text-slate-500">
-                                    <span className="flex items-center gap-1.5">
-                                        <UserCircle size={16} /> {journalist.name}
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <Building2 size={16} /> {journalist.outlet}
-                                    </span>
-                                </div>
+                            <div className="flex items-center gap-4 text-sm font-medium text-slate-500">
+                                <span className="flex items-center gap-1.5 truncate"><UserCircle size={14} className="text-slate-400" />{journalist.name}</span>
+                                <span className="flex items-center gap-1.5 truncate"><Building2 size={14} className="text-slate-400" />{journalist.outlet}</span>
                             </div>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors bg-white"
-                        >
-                            <X size={24} />
+                        <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors flex-shrink-0">
+                            <X size={20} />
                         </button>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row flex-grow overflow-hidden">
-                        {/* Sidebar Settings */}
-                        <div className="w-full sm:w-64 bg-slate-50 border-r border-slate-200 p-6 space-y-6 flex-shrink-0 overflow-y-auto">
-                            <div>
-                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                    <SlidersHorizontal size={14} /> Pitch Strategy
-                                </h3>
-                                <div className="space-y-2">
-                                    {["Story-driven", "Data-heavy", "Quick Check-in"].map((t) => (
-                                        <button
-                                            key={t}
-                                            onClick={() => handleToneChange(t)}
-                                            className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${tone === t ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}`}
-                                        >
-                                            {t}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="pt-4 border-t border-slate-200">
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                    Changing the pitch strategy will trigger the Anthropic API to regenerate the content based on specialized PR guidelines.
+                    {/* Body */}
+                    <div className="flex flex-col sm:flex-row flex-1 overflow-hidden">
+                        {/* Tone sidebar */}
+                        <div className="w-full sm:w-56 bg-slate-50 border-b sm:border-b-0 sm:border-r border-slate-200 p-5 flex flex-col gap-3 flex-shrink-0 overflow-y-auto">
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Strategy</p>
+                            {TONES.map(t => {
+                                const isActive = tone === t.id;
+                                return (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => { setTone(t.id); gen(t.id); }}
+                                        className={`text-left rounded-xl p-3 border transition-all ${isActive
+                                                ? t.accentClass
+                                                : 'border-slate-200 bg-white hover:border-slate-300 text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                    >
+                                        <p className="text-sm font-bold">{t.id}</p>
+                                        <p className={`text-xs mt-1 ${isActive ? 'opacity-80' : 'text-slate-500'}`}>{t.desc}</p>
+                                    </button>
+                                );
+                            })}
+                            <div className="mt-auto pt-4 border-t border-slate-200">
+                                <p className="text-[11px] text-slate-500 leading-relaxed">
+                                    Each strategy uses a specialized Anthropic prompt tailored to the journalist's beat.
                                 </p>
                             </div>
                         </div>
 
-                        {/* Email Preview Area */}
-                        <div className="p-6 sm:p-8 overflow-y-auto bg-white flex-grow">
-                            <div className="bg-white border text-sm text-slate-700 border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                                <div className="pb-4 border-b border-slate-100 space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-semibold text-slate-500 w-16">To:</span>
+                        {/* Email preview */}
+                        <div className="flex-1 overflow-y-auto p-6 bg-white">
+                            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                {/* Email header */}
+                                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 space-y-3">
+                                    <div className="flex items-center text-sm">
+                                        <span className="text-slate-500 font-semibold w-16 flex-shrink-0">To:</span>
                                         {journalist.email ? (
-                                            <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded flex items-center gap-1.5 font-medium">
-                                                <CheckCircle size={12} />
-                                                {journalist.email}
+                                            <span className="flex items-center gap-1.5 font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-0.5">
+                                                <CheckCircle size={14} /> {journalist.email}
                                             </span>
                                         ) : (
-                                            <span className="bg-rose-100 px-2 py-0.5 rounded text-rose-700 font-medium">
-                                                [No Public Email Found]
+                                            <span className="font-medium text-rose-600 bg-rose-50 border border-rose-100 rounded-md px-2 py-0.5">
+                                                No public email
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-semibold text-slate-500 w-16">Subject:</span>
-                                        <span className="font-bold">Pitch Idea: {campaignTopic ? campaignTopic : `Data on ${journalist.beat} Trends`}</span>
+                                    <div className="flex items-center text-sm">
+                                        <span className="text-slate-500 font-semibold w-16 flex-shrink-0">Subject:</span>
+                                        <span className="text-slate-900 font-bold truncate">Pitch: {campaignTopic || `${journalist.beat} story idea`}</span>
                                     </div>
                                 </div>
 
-                                <div className="pt-2 text-base leading-relaxed space-y-4 font-normal whitespace-pre-line min-h-[250px]">
-                                    {isLoading ? (
-                                        <div className="flex flex-col items-center justify-center p-10 text-slate-500 gap-4 h-full">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                                            <p className="font-medium animate-pulse">Running {tone} strategy model...</p>
+                                {/* Body */}
+                                <div className="p-5 min-h-[250px] sm:min-h-[300px]">
+                                    {loading ? (
+                                        <div className="flex flex-col items-center justify-center h-full gap-4 text-slate-500 py-12">
+                                            <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-indigo-600 animate-spin" />
+                                            <p className="font-semibold text-sm">Running {tone} model…</p>
                                         </div>
                                     ) : error ? (
-                                        <div className="text-red-500 p-4 bg-red-50 rounded-lg border border-red-100">{error}</div>
+                                        <div className="p-4 bg-rose-50 border border-rose-100 rounded-lg text-rose-700 text-sm font-medium">
+                                            {error}
+                                        </div>
                                     ) : (
                                         <motion.div
-                                            key={pitch} // animate when pitch changes
+                                            key={pitch}
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
-                                            transition={{ duration: 0.5 }}
+                                            transition={{ duration: 0.3 }}
+                                            className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-medium"
                                         >
                                             {pitch}
                                         </motion.div>
@@ -173,33 +148,36 @@ export default function PitchModal({ isOpen, onClose, journalist, campaignTopic 
                         </div>
                     </div>
 
-                    {/* Footer Actions */}
-                    <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 sm:gap-4 flex-col sm:flex-row items-center">
+                    {/* Footer */}
+                    <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3 flex-shrink-0">
                         <button
+                            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                             onClick={onClose}
-                            className="w-full sm:w-auto px-6 py-2.5 text-slate-600 font-semibold hover:bg-slate-200 rounded-xl transition-colors"
                         >
                             Cancel
                         </button>
-
                         <button
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:border-slate-300 hover:bg-slate-100 transition-all"
-                            onClick={() => navigator.clipboard.writeText(pitch)}
-                            disabled={isLoading}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors disabled:opacity-50 shadow-sm"
+                            onClick={() => gen(tone)}
+                            disabled={loading}
                         >
-                            <Copy size={18} />
-                            Copy to Clipboard
+                            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+                            Regenerate
                         </button>
-
                         <button
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg shadow-indigo-600/20 disabled:opacity-50"
-                            disabled={isLoading}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors disabled:opacity-50 shadow-sm w-[100px] justify-center"
+                            onClick={copy}
+                            disabled={loading || !pitch}
                         >
-                            <Send size={18} />
-                            Send Email
+                            {copied ? <><CheckCircle size={16} className="text-emerald-500" /> Copied</> : <><Copy size={16} /> Copy</>}
+                        </button>
+                        <button
+                            className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+                            disabled={loading}
+                        >
+                            <Send size={16} /> Send
                         </button>
                     </div>
-
                 </motion.div>
             </div>
         </AnimatePresence>

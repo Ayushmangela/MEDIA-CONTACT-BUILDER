@@ -1,65 +1,63 @@
 import React from 'react';
-import { Users, FileText, Send, Award } from 'lucide-react';
+import { Users, FileText, Send } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { motion } from 'framer-motion';
 
-export default function Dashboard({ stats }) {
-    if (!stats) return null;
+const COLORS = { Premium: '#8b5cf6', Major: '#3b82f6', Niche: '#10b981', Standard: '#94a3b8' };
 
-    const data = [
-        { name: 'Premium', count: stats.tier_distribution?.Premium || 0, color: '#4f46e5' },
-        { name: 'Major', count: stats.tier_distribution?.Major || 0, color: '#0ea5e9' },
-        { name: 'Niche', count: stats.tier_distribution?.Niche || 0, color: '#10b981' },
-        { name: 'Standard', count: stats.tier_distribution?.Standard || 0, color: '#94a3b8' },
+const Tip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-lg">
+            {payload[0].value} journalists
+        </div>
+    );
+};
+
+export default function Dashboard({ stats = {} }) {
+    const stats3 = [
+        { label: 'Journalists', value: stats.journalists_total ?? 0, icon: Users, colorClass: 'text-violet-600', bgClass: 'bg-violet-50' },
+        { label: 'Articles', value: stats.articles_total ?? 0, icon: FileText, colorClass: 'text-blue-600', bgClass: 'bg-blue-50' },
+        { label: 'Pitches', value: stats.pitches_generated ?? 0, icon: Send, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50' },
     ];
 
+    const chartData = Object.entries(stats.tier_distribution || {}).map(([name, count]) => ({ name, count }));
+
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="glass rounded-2xl p-6 lg:p-8 space-y-8"
-        >
-            <div className="flex items-center gap-3">
-                <Award className="text-indigo-600" size={24} />
-                <h2 className="text-xl font-bold text-slate-800 tracking-tight">Intelligence Dashboard</h2>
-            </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Intelligence</p>
 
-            <div className="grid grid-cols-2 gap-4">
-                <motion.div whileHover={{ y: -5 }} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <div className="flex items-center justify-between mb-2 text-slate-500">
-                        <span className="text-xs font-bold uppercase tracking-wider">Targets</span>
-                        <Users size={16} />
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+                {stats3.map(({ label, value, icon: Icon, colorClass, bgClass }) => (
+                    <div key={label} className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center transition-colors hover:bg-slate-100">
+                        <div className={`w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center ${bgClass}`}>
+                            <Icon size={16} className={colorClass} />
+                        </div>
+                        <p className={`text-lg font-black leading-none tabular-nums ${colorClass}`}>{value}</p>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide mt-1.5">{label}</p>
                     </div>
-                    <p className="text-3xl font-black text-indigo-600">{stats.journalists_total}</p>
-                </motion.div>
+                ))}
+            </div>
 
-                <motion.div whileHover={{ y: -5 }} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <div className="flex items-center justify-between mb-2 text-slate-500">
-                        <span className="text-xs font-bold uppercase tracking-wider">Articles</span>
-                        <FileText size={16} />
+            {/* Chart */}
+            {chartData.length > 0 && (
+                <>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Outlet Mix</p>
+                    <div className="h-24">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} barSize={24} margin={{ top: 0, right: 0, left: -24, bottom: 0 }}>
+                                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} tickLine={false} axisLine={false} />
+                                <Tooltip content={<Tip />} cursor={false} />
+                                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                                    {chartData.map((e, i) => (
+                                        <Cell key={i} fill={COLORS[e.name] || '#94a3b8'} fillOpacity={0.9} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
-                    <p className="text-3xl font-black text-blue-500">{stats.articles_total}</p>
-                </motion.div>
-            </div>
-
-            <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm w-full">
-                <h3 className="text-sm font-bold text-slate-500 mb-4 uppercase tracking-wider">Outlet Quality Distribution</h3>
-                <div className="h-40 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={data}>
-                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                            <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                                {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-
-        </motion.div>
+                </>
+            )}
+        </div>
     );
 }
