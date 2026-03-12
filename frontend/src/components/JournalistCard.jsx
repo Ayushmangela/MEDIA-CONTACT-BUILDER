@@ -1,30 +1,53 @@
 import React, { useState } from 'react';
-import { PenTool, ChevronDown, Building, Tag, CheckCircle, BarChart3, ChevronUp, Eye } from 'lucide-react';
+import { PenTool, Building, Tag, CheckCircle, BarChart3, Eye, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const BREAKDOWN_LABELS = {
+    keyword_overlap: { label: 'Topic Keyword Match', max: 25, desc: 'How closely their articles mention your exact campaign topic.' },
+    beat_match: { label: 'Beat Alignment', max: 35, desc: 'Whether their coverage beat matches the campaign category.' },
+    volume: { label: 'Article Volume', max: 25, desc: 'How many recent articles they have written on this beat.' },
+    outlet_tier: { label: 'Outlet Authority', max: 15, desc: 'Quality and reach of their publication.' },
+};
+
+function ScoreBar({ value, max, color }) {
+    const pct = Math.round((value / max) * 100);
+    return (
+        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+            <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${pct}%` }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+                className={`h-2 rounded-full ${color}`}
+            />
+        </div>
+    );
+}
+
 export default function JournalistCard({ journalist, onDraftPitch, onViewProfile, index }) {
-    const [expanded, setExpanded] = useState(false);
+    const [showBreakdown, setShowBreakdown] = useState(false);
     const { name, outlet, beat, relevance_score: score, ai_summary, tier, score_breakdown } = journalist;
 
     const getScoreColor = (s) => {
-        if (s >= 80) return "text-emerald-700 bg-emerald-50 border-emerald-200";
-        if (s >= 50) return "text-blue-700 bg-blue-50 border-blue-200";
-        return "text-gray-700 bg-gray-50 border-gray-200";
+        if (s >= 80) return { badge: 'text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100', bar: 'bg-emerald-500' };
+        if (s >= 50) return { badge: 'text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100', bar: 'bg-blue-500' };
+        return { badge: 'text-gray-700 bg-gray-50 border-gray-200 hover:bg-gray-100', bar: 'bg-gray-400' };
     };
 
     const getTierBadge = (t) => {
         switch (t) {
-            case 'Premium': return "bg-amber-100 text-amber-800 border-amber-200";
-            case 'Major': return "bg-blue-100 text-blue-800 border-blue-200";
-            case 'Niche': return "bg-teal-100 text-teal-800 border-teal-200";
-            default: return "bg-gray-100 text-gray-800 border-gray-200";
+            case 'Premium': return 'bg-amber-100 text-amber-800 border-amber-200';
+            case 'Major': return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'Niche': return 'bg-teal-100 text-teal-800 border-teal-200';
+            default: return 'bg-gray-100 text-gray-800 border-gray-200';
         }
     };
 
+    const colors = getScoreColor(score);
     const contextText = ai_summary
         ? (ai_summary.includes(' | ') ? ai_summary.split(' | ')[0] : ai_summary).split('|||')[0]
         : null;
     const showContext = contextText && !contextText.includes('No specific contextual');
+    const totalMax = Object.values(BREAKDOWN_LABELS).reduce((s, v) => s + v.max, 0);
 
     return (
         <motion.div
@@ -33,6 +56,7 @@ export default function JournalistCard({ journalist, onDraftPitch, onViewProfile
             transition={{ duration: 0.2, delay: typeof index === 'number' ? Math.min(index * 0.05, 0.3) : 0 }}
             className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col gap-4"
         >
+            {/* Header row */}
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 flex-shrink-0 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">
@@ -57,14 +81,18 @@ export default function JournalistCard({ journalist, onDraftPitch, onViewProfile
                     </div>
                 </div>
 
-                <div className="flex flex-shrink-0">
-                    <div className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-2 text-sm ${getScoreColor(score)}`}>
-                        {score >= 80 ? <CheckCircle size={16} /> : <BarChart3 size={16} />}
-                        {score}% Match
-                    </div>
-                </div>
+                {/* Clickable score badge */}
+                <button
+                    onClick={() => score_breakdown && setShowBreakdown(prev => !prev)}
+                    title={score_breakdown ? 'Click to see match breakdown' : undefined}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-lg border font-bold flex items-center gap-2 text-sm transition-colors ${colors.badge} ${score_breakdown ? 'cursor-pointer' : 'cursor-default'}`}
+                >
+                    {score >= 80 ? <CheckCircle size={16} /> : <BarChart3 size={16} />}
+                    {score}% Match
+                </button>
             </div>
 
+            {/* AI context strip */}
             {showContext && (
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 text-sm text-slate-700 leading-relaxed shadow-sm">
                     <strong className="font-semibold text-slate-900 mr-2">AI Context:</strong>
@@ -72,66 +100,73 @@ export default function JournalistCard({ journalist, onDraftPitch, onViewProfile
                 </div>
             )}
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2 pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <button
-                        onClick={onDraftPitch}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+            {/* Score breakdown panel */}
+            <AnimatePresence>
+                {showBreakdown && score_breakdown && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="overflow-hidden"
                     >
-                        <PenTool size={16} /> Pitch
-                    </button>
-                    <button
-                        onClick={onViewProfile}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm"
-                    >
-                        <Eye size={16} /> Profile
-                    </button>
-                </div>
-
-                {score_breakdown && (
-                    <button
-                        onClick={() => setExpanded(!expanded)}
-                        className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors ml-auto"
-                    >
-                        Match Details {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
-                )}
-            </div>
-
-            {score_breakdown && (
-                <AnimatePresence>
-                    {expanded && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
-                        >
-                            <div className="mt-2 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm">
-                                <h4 className="font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-2">Why is this a match?</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-gray-600 max-w-2xl">
-                                    <div className="flex justify-between items-center pb-1 border-b border-gray-100 sm:border-0">
-                                        <span>Topic Keyword</span>
-                                        <span className="font-semibold text-indigo-600">+{score_breakdown.keyword_overlap || 0}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center pb-1 border-b border-gray-100 sm:border-0">
-                                        <span>Beat Alignment</span>
-                                        <span className="font-semibold text-indigo-600">+{score_breakdown.beat_match || 0}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center pb-1 border-b border-gray-100 sm:border-0">
-                                        <span>Recent Volume</span>
-                                        <span className="font-semibold text-indigo-600">+{score_breakdown.volume || 0}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span>Outlet Authority</span>
-                                        <span className="font-semibold text-indigo-600">+{score_breakdown.outlet_tier || 0}</span>
-                                    </div>
+                        <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
+                            {/* Panel header */}
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h4 className="font-bold text-gray-900 text-sm">Why {score}% Match?</h4>
+                                    <p className="text-xs text-gray-500 mt-0.5">Score out of {totalMax} possible points</p>
                                 </div>
+                                <button
+                                    onClick={() => setShowBreakdown(false)}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <X size={16} />
+                                </button>
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            )}
+
+                            {/* Score rows */}
+                            <div className="flex flex-col gap-3.5">
+                                {Object.entries(BREAKDOWN_LABELS).map(([key, { label, max, desc }]) => {
+                                    const val = score_breakdown[key] ?? 0;
+                                    const earned = val > 0;
+                                    return (
+                                        <div key={key}>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${earned ? colors.bar : 'bg-gray-300'}`} />
+                                                    <span className="text-sm font-medium text-gray-800">{label}</span>
+                                                </div>
+                                                <span className={`text-sm font-bold tabular-nums ${earned ? 'text-indigo-600' : 'text-gray-400'}`}>
+                                                    {val} / {max}
+                                                </span>
+                                            </div>
+                                            <ScoreBar value={val} max={max} color={earned ? colors.bar : 'bg-gray-300'} />
+                                            <p className="text-xs text-gray-500 mt-1 ml-4">{desc}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-3 mt-2 pt-4 border-t border-gray-100">
+                <button
+                    onClick={onDraftPitch}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+                >
+                    <PenTool size={16} /> Pitch
+                </button>
+                <button
+                    onClick={onViewProfile}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                    <Eye size={16} /> Profile
+                </button>
+            </div>
         </motion.div>
     );
 }

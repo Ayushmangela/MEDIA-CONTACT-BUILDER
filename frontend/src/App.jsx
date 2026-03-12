@@ -1,126 +1,194 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Newspaper, Search, SearchX } from 'lucide-react';
+import { Newspaper, Search, SearchX, RefreshCw } from 'lucide-react';
 import SearchPanel from './components/SearchPanel';
 import JournalistCard from './components/JournalistCard';
 import PitchModal from './components/PitchModal';
 import ProfileModal from './components/ProfileModal';
-import Dashboard from './components/Dashboard';
+import logo from './assets/logo.png';
+
 import CampaignSuggestions from './components/CampaignSuggestions';
 
 function App() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showPitchModal, setShowPitchModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedJournalist, setSelectedJournalist] = useState(null);
-  const [journalists, setJournalists] = useState([]);
-  const [stats, setStats] = useState({});
+  const [results, setResults] = useState([]);
+
   const [isLoading, setIsLoading] = useState(false);
-  const [currentBeat, setCurrentBeat] = useState('environment');
-  const [currentTopic, setCurrentTopic] = useState('');
+  const [beat, setBeat] = useState('environment');
+  const [topic, setTopic] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
-  useEffect(() => {
-    fetch('http://localhost:8000/api/stats')
-      .then(r => r.json()).then(setStats)
-      .catch(() => { });
-  }, []);
-
-  const handleSearch = (beat, topic) => {
-    setCurrentBeat(beat);
-    if (topic) setCurrentTopic(topic);
+  const handleSearch = async (overrideTopic = null, overrideBeat = null) => {
+    const searchTopic = overrideTopic || topic;
+    const searchBeat = overrideBeat || beat;
+    if (!searchTopic) return;
+    
     setIsLoading(true);
     setHasSearched(true);
-    fetch('http://localhost:8000/api/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beat, topic }),
-    })
-      .then(r => r.json())
-      .then(d => { setJournalists(d); setIsLoading(false); })
-      .catch(() => setIsLoading(false));
+    try {
+      const res = await fetch('http://localhost:8000/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beat: searchBeat, topic: searchTopic }),
+      });
+      const data = await res.json();
+      setResults(data);
+    } catch (err) {
+      console.error("Search failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViewProfile = (j) => {
+    setSelectedJournalist(j);
+    setShowProfileModal(true);
+  };
+
+  const handleSelectRelated = async (id) => {
+    const existing = results.find(r => r.id === id);
+    if (existing) {
+      setSelectedJournalist(existing);
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:8000/api/journalists/${id}?topic=${encodeURIComponent(topic)}&beat=${encodeURIComponent(beat)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedJournalist(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch journalist detail:", err);
+    }
+  };
+
+  const handleDraftPitch = (j) => {
+    setSelectedJournalist(j);
+    setShowPitchModal(true);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col">
-
-      {/* ── TOP NAV BAR ─────────────────────────────────── */}
-      <header className="h-16 px-6 sm:px-8 border-b border-slate-200 bg-white sticky top-0 z-20 shadow-sm flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+      {/* Navigation / Header */}
+      <nav className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-40 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200">
-            <Zap size={20} className="text-white fill-current" />
+          <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
+            <img src={logo} alt="Logo" className="w-full h-full object-contain brightness-0" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-slate-900 leading-tight">Media Contact Builder</h1>
-            <p className="text-xs font-semibold text-slate-500 mt-0.5">AI Journalist Intelligence</p>
+            <h1 className="text-lg font-black tracking-tight text-slate-800">Paw<span className="text-indigo-600">Pitch</span></h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">PR Intelligence</p>
           </div>
         </div>
-      </header>
+      </nav>
 
-      {/* ── 3-COLUMN MAIN LAYOUT ────────────────────────── */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-6 relative">
-
-        {/* Left Column: Search & Suggestions */}
-        <div className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-6 lg:sticky lg:top-[5.5rem] lg:h-[calc(100vh-8rem)] lg:overflow-y-auto pb-4">
-          <SearchPanel onSearch={handleSearch} currentBeat={currentBeat} />
-          <CampaignSuggestions currentBeat={currentBeat} onUseSuggestion={(topic) => {
-            setCurrentTopic(topic);
-            handleSearch(currentBeat, topic);
-          }} />
-        </div>
-
-        {/* Center Column: Results */}
-        <div className="flex-1 min-w-0 flex flex-col pt-2 lg:pt-0">
-          <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-4 shrink-0">
-            <div className="flex items-center gap-3">
-              <Newspaper size={20} className="text-indigo-600" />
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-800">Top Matches</h2>
-                {currentTopic && (
-                  <span className="text-sm text-slate-500 font-medium flex items-center gap-1.5 hidden sm:flex">
-                    <span className="text-slate-300">•</span> for <span className="text-indigo-600 font-semibold">"{currentTopic}"</span>
-                  </span>
-                )}
+      {/* Main Layout: 2 Columns */}
+      <main className="flex-1 flex overflow-hidden">
+        {/* Left: Campaign Input & Suggestions */}
+        <aside className="w-[380px] border-r border-slate-200 bg-white flex flex-col flex-shrink-0 shadow-sm z-30">
+          <div className="p-6 flex flex-col gap-6 overflow-y-auto">
+            <div className="flex flex-col gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Campaign Topic</label>
+                <input
+                  type="text"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300 font-medium"
+                  placeholder="e.g. Climate change in 2024"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                />
               </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Target Beat</label>
+                <select
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-medium appearance-none"
+                  value={beat}
+                  onChange={(e) => setBeat(e.target.value)}
+                >
+                  <option value="environment">Environment</option>
+                  <option value="animal-welfare">Animal Welfare</option>
+                  <option value="food-systems">Food Systems</option>
+                  <option value="science">Science</option>
+                </select>
+              </div>
+
+              <button
+                onClick={() => handleSearch()}
+                disabled={isLoading || !topic}
+                className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-slate-200"
+              >
+                {isLoading ? <RefreshCw className="animate-spin" size={18} /> : <Search size={18} />}
+                <span>{isLoading ? "Analyzing..." : "Find Journalists"}</span>
+              </button>
             </div>
-            {hasSearched && !isLoading && (
-              <div className="bg-white text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200 shadow-sm flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                {journalists.length} results
-              </div>
-            )}
-          </div>
 
-          <div className="pb-10">
-            {!hasSearched ? (
-              <EmptyState />
+            <CampaignSuggestions currentBeat={beat} onUseSuggestion={(t) => {
+              setTopic(t);
+              handleSearch(t, beat);
+            }} />
+          </div>
+        </aside>
+
+        {/* Right: Results List */}
+        <section className="flex-1 overflow-y-auto bg-slate-50/50 p-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Best Matches</h2>
+                <p className="text-sm font-medium text-slate-500">AI-ranked contacts most likely to cover your topic</p>
+              </div>
+              {results.length > 0 && (
+                <div className="text-xs font-bold px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 shadow-sm">
+                  {results.length} found
+                </div>
+              )}
+            </div>
+
+            {results.length === 0 && !isLoading ? (
+              <div className="flex flex-col items-center justify-center py-32 text-center bg-white border border-slate-200 rounded-3xl border-dashed">
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-4">
+                  <Search size={32} />
+                </div>
+                <h3 className="text-slate-800 font-bold mb-1">Begin your search</h3>
+                <p className="text-sm text-slate-400 max-w-xs mx-auto">Enter a topic and select a beat to discover the best journalist matches.</p>
+              </div>
             ) : isLoading ? (
               <LoadingSkeleton />
-            ) : journalists.length === 0 ? (
-              <NoResults />
             ) : (
-              <div className="flex flex-col gap-4">
-                {journalists.map((j, i) => (
+              <div className="grid grid-cols-1 gap-4 pb-12">
+                {results.map((j, idx) => (
                   <JournalistCard
                     key={j.id}
-                    index={i}
                     journalist={j}
-                    onDraftPitch={() => { setSelectedJournalist(j); setIsModalOpen(true); }}
-                    onViewProfile={() => { setSelectedJournalist(j); setIsProfileOpen(true); }}
+                    index={idx}
+                    onDraftPitch={() => handleDraftPitch(j)}
+                    onViewProfile={() => handleViewProfile(j)}
                   />
                 ))}
               </div>
             )}
           </div>
-        </div>
-
-        {/* Right Column: Dashboard */}
-        <div className="w-full lg:w-80 flex-shrink-0 flex flex-col gap-6 lg:sticky lg:top-[5.5rem] lg:h-[calc(100vh-8rem)] lg:overflow-y-auto pb-4 pt-4 border-t lg:border-t-0 lg:pt-0 border-slate-200">
-          <Dashboard stats={stats} />
-        </div>
-
+        </section>
       </main>
 
-      <PitchModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} journalist={selectedJournalist} campaignTopic={currentTopic} />
-      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} journalist={selectedJournalist} />
+      {/* Modals */}
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        journalist={selectedJournalist}
+        onSelectRelated={handleSelectRelated}
+        onPitch={handleDraftPitch}
+      />
+
+      <PitchModal
+        isOpen={showPitchModal}
+        onClose={() => setShowPitchModal(false)}
+        journalist={selectedJournalist}
+        campaignTopic={topic}
+      />
     </div>
   );
 }

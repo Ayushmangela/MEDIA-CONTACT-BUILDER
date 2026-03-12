@@ -26,8 +26,8 @@ def fetch_and_store_articles(topic: str, beat_key: str, db: Session):
         
     query = f'"{topic}"'
     
-    # Last 28 days (max for free tier)
-    from_date = (datetime.utcnow() - timedelta(days=28)).strftime('%Y-%m-%d')
+    # Last 30 days (max for free tier)
+    from_date = (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%d')
     url = f"https://newsapi.org/v2/everything?q={query}&from={from_date}&language=en&sortBy=relevancy&pageSize=100&apiKey={NEWS_API_KEY}"
     
     try:

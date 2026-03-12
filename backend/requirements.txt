@@ -4,6 +4,7 @@ requests
 newsapi-python
 spacy
 sqlmodel
-anthropic
+groq
 python-dotenv
 beautifulsoup4
+networkx

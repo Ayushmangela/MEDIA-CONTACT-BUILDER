@@ -1,10 +1,20 @@
 import React from 'react';
-import { X, Building2, BookOpen, BrainCircuit, ExternalLink, Tag, CheckCircle } from 'lucide-react';
+import { X, Building, BookOpen, BrainCircuit, ExternalLink, Tag, CheckCircle, Clock, PenTool } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PitchPredictor from './PitchPredictor';
+import RelatedJournalists from './RelatedJournalists';
 
-export default function ProfileModal({ isOpen, onClose, journalist }) {
-    if (!journalist) return null;
-    const initials = journalist.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+export default function ProfileModal({ isOpen, onClose, journalist, onSelectRelated, onPitch }) {
+    if (!journalist || !isOpen) return null;
+    
+    const name = journalist.name || 'Unknown Journalist';
+    const initials = name
+        .split(' ')
+        .filter(Boolean)
+        .map(n => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase() || '??';
 
     const snippets = (journalist.ai_summary || '')
         .split(' | ')
@@ -43,9 +53,9 @@ export default function ProfileModal({ isOpen, onClose, journalist }) {
                                     {initials}
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-slate-800 tracking-tight mb-1">{journalist.name}</h2>
+                                    <h2 className="text-xl font-bold text-slate-800 tracking-tight mb-1">{name}</h2>
                                     <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 font-medium">
-                                        <span className="flex items-center gap-1.5"><Building2 size={16} />{journalist.outlet}</span>
+                                        <span className="flex items-center gap-1.5"><Building size={16} />{journalist.outlet}</span>
                                         <span className="flex items-center gap-1.5 capitalize"><Tag size={16} />{(journalist.beat || '').replace('-', ' ')}</span>
                                     </div>
                                     <div className="mt-3 flex items-center gap-2">
@@ -56,9 +66,17 @@ export default function ProfileModal({ isOpen, onClose, journalist }) {
                                     </div>
                                 </div>
                             </div>
-                            <button className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors flex-shrink-0" onClick={onClose}>
-                                <X size={20} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => onPitch(journalist)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm"
+                                >
+                                    <PenTool size={16} /> Draft Pitch
+                                </button>
+                                <button className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors flex-shrink-0" onClick={onClose}>
+                                    <X size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Body */}
@@ -111,6 +129,15 @@ export default function ProfileModal({ isOpen, onClose, journalist }) {
                                 </section>
                             )}
 
+                            {/* Pitch Prediction */}
+                            <section>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Clock size={18} className="text-violet-500" />
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Best Time to Pitch</p>
+                                </div>
+                                <PitchPredictor prediction={journalist.pitch_prediction} />
+                            </section>
+
                             {/* Articles */}
                             <section>
                                 <div className="flex items-center gap-2 mb-4">
@@ -138,6 +165,13 @@ export default function ProfileModal({ isOpen, onClose, journalist }) {
                                     <p className="text-sm text-slate-500 italic bg-slate-50 p-4 rounded-xl border border-slate-100">No recent articles found.</p>
                                 )}
                             </section>
+
+                            {/* Related Connections */}
+                            <RelatedJournalists 
+                                journalistId={journalist.id} 
+                                onViewProfile={onSelectRelated}
+                                onPitch={onPitch}
+                            />
                         </div>
                     </motion.div>
                 </div>

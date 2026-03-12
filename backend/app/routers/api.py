@@ -8,6 +8,8 @@ from ..services.nlp import run_nlp_profiling
 from ..services.scorer import calculate_relevance
 from ..services.pitcher import generate_ai_pitch
 from ..services.campaign_suggester import get_campaign_suggestions
+from ..services.predictor import get_pitch_prediction
+from ..services.network_analyzer import build_influence_network, get_related_journalists
 
 router = APIRouter(prefix="/api")
 
@@ -74,21 +76,67 @@ def search_and_process(payload: Dict[str, Any], db: Session = Depends(get_sessio
         articles = db.exec(select(Article).where(Article.journalist_id == j.id).order_by(Article.published_at.desc())).all()
         j_dict["recent_articles"] = [{"title": a.title, "url": a.url} for a in articles[:15] if a.title] # Fetching more articles for the profile view
         j_dict["score_breakdown"] = score_breakdowns.get(j.id, {})
+        j_dict["pitch_prediction"] = get_pitch_prediction(j.id, db)
         results.append(j_dict)
         
     return results
 
 @router.post("/generate-pitch/{journalist_id}")
 async def create_detailed_pitch(journalist_id: int, payload: Dict[str, Any], db: Session = Depends(get_session)):
-    """Generates strategy-driven AI pitches."""
+    """Generates strategy-driven AI pitches with optional campaign brief."""
     topic = payload.get("topic", "Company Announcement")
     tone = payload.get("tone", "Story-driven")
-    
+    brief = {
+        "org_name":      payload.get("org_name", ""),
+        "key_stat":      payload.get("key_stat", ""),
+        "story_angle":   payload.get("story_angle", ""),
+        "target_outcome": payload.get("target_outcome", ""),
+    }
+
     journalist = db.get(Journalist, journalist_id)
     if not journalist:
         raise HTTPException(status_code=404, detail="Journalist not found")
-        
+
     articles = db.exec(select(Article).where(Article.journalist_id == journalist_id)).all()
-    
-    pitch = generate_ai_pitch(journalist, articles, topic, tone, db)
+    pitch = generate_ai_pitch(journalist, articles, topic, tone, db, brief=brief)
     return {"pitch": pitch}
+
+@router.get("/journalists/{journalist_id}")
+def get_journalist_detail(
+    journalist_id: int, 
+    topic: str = Query(None), 
+    beat: str = Query(None), 
+    db: Session = Depends(get_session)
+):
+    """Returns full detail for a single journalist, with optional topic/beat context."""
+    journalist = db.get(Journalist, journalist_id)
+    if not journalist:
+        raise HTTPException(status_code=404, detail="Journalist not found")
+    
+    # Recalculate context if provided
+    if topic and beat:
+        run_nlp_profiling(journalist_id, topic, db)
+        calculate_relevance(journalist_id, topic, beat, db)
+    
+    j_dict = journalist.dict()
+    articles = db.exec(
+        select(Article)
+        .where(Article.journalist_id == journalist_id)
+        .order_by(Article.published_at.desc())
+        .limit(15)
+    ).all()
+    
+    j_dict["recent_articles"] = [{"title": a.title, "url": a.url} for a in articles if a.title]
+    j_dict["pitch_prediction"] = get_pitch_prediction(journalist_id, db)
+    
+    # Re-calculate breakdown for consistency
+    if topic and beat:
+        _, breakdown = calculate_relevance(journalist_id, topic, beat, db)
+        j_dict["score_breakdown"] = breakdown
+    
+    return j_dict
+
+@router.get("/journalists/{journalist_id}/related")
+def get_related(journalist_id: int, db: Session = Depends(get_session)):
+    """Returns related journalists for a specific ID."""
+    return get_related_journalists(journalist_id, db)
